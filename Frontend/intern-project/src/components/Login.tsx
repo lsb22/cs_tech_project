@@ -3,6 +3,7 @@ import { Field } from "@/components/ui/field";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "react-router";
 
 const schema = z.object({
   // for schema based form validation
@@ -15,12 +16,17 @@ const schema = z.object({
 type LoginData = z.infer<typeof schema>;
 
 export default function Login() {
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
   } = useForm<LoginData>({ resolver: zodResolver(schema) });
+
+  const handleRegisterClick = () => {
+    navigate("/register");
+  };
 
   return (
     <Box
@@ -58,9 +64,10 @@ export default function Login() {
               )}
             </Field>
           </Fieldset.Content>
-          <Button type="submit" alignSelf="flex-start">
-            Submit
-          </Button>
+          <Stack direction="row">
+            <Button type="submit">Submit</Button>
+            <Button onClick={handleRegisterClick}>Register</Button>
+          </Stack>
         </Fieldset.Root>
       </form>
     </Box>
