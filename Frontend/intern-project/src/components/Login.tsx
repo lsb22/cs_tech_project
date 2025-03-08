@@ -1,8 +1,27 @@
-import { Fieldset, Stack, Input, Button, Box } from "@chakra-ui/react";
+import { Fieldset, Stack, Input, Button, Box, Text } from "@chakra-ui/react";
 import { Field } from "@/components/ui/field";
-import { FormEvent } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const schema = z.object({
+  // for schema based form validation
+  email: z.string().min(10, { message: "Enter valid email" }),
+  password: z
+    .string()
+    .min(8, { message: "password can't be lesser than 8 characters." }),
+});
+
+type LoginData = z.infer<typeof schema>;
 
 export default function Login() {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<LoginData>({ resolver: zodResolver(schema) });
+
   return (
     <Box
       display="flex"
@@ -13,10 +32,10 @@ export default function Login() {
     >
       <form
         className="login-form"
-        onSubmit={(e: FormEvent) => {
-          e.preventDefault();
-          console.log("submitted");
-        }}
+        onSubmit={handleSubmit((data) => {
+          console.log(data);
+          reset();
+        })}
       >
         <Fieldset.Root>
           <Stack>
@@ -27,10 +46,16 @@ export default function Login() {
           </Stack>
           <Fieldset.Content>
             <Field label="Email Address">
-              <Input name="email" type="email" />
+              <Input type="email" {...register("email")} />
+              {errors.email && (
+                <Text color="red.400">{errors.email.message}</Text>
+              )}
             </Field>
             <Field label="Password">
-              <Input name="password" type="password" />
+              <Input type="password" {...register("password")} />
+              {errors.password && (
+                <Text color="red.400">{errors.password.message}</Text>
+              )}
             </Field>
           </Fieldset.Content>
           <Button type="submit" alignSelf="flex-start">
