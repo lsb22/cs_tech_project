@@ -32,7 +32,7 @@ export default function Login() {
   const handleLoginClick = (data: LoginData) => {
     apiClient
       .post("/login", data)
-      .then(() => alert("User exists"))
+      .then(() => navigate("/dashboard"))
       .catch((err) => alert(err.response.data.message));
   };
 

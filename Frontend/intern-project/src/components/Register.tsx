@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import apiClient from "../../Services/api-client";
+import { useNavigate } from "react-router";
 
 const schema = z.object({
   // for schema based form validation
@@ -24,11 +25,13 @@ export default function Register() {
     formState: { errors },
   } = useForm<RegisterData>({ resolver: zodResolver(schema) });
 
+  const navigate = useNavigate();
+
   const handleRegister = (data: RegisterData) => {
     apiClient
       .post("/register", data)
-      .then((res) => console.log(res))
-      .catch((err) => console.log(err));
+      .then(() => navigate("/dashboard"))
+      .catch((err) => alert(err.response.data.message));
   };
   return (
     <Box
