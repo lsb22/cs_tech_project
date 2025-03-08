@@ -3,6 +3,7 @@ import { Field } from "@/components/ui/field";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import apiClient from "../../Services/api-client";
 
 const schema = z.object({
   // for schema based form validation
@@ -13,7 +14,7 @@ const schema = z.object({
   name: z.string().min(4, { message: "Enter valid user name" }),
 });
 
-type LoginData = z.infer<typeof schema>;
+type RegisterData = z.infer<typeof schema>;
 
 export default function Register() {
   const {
@@ -21,8 +22,14 @@ export default function Register() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<LoginData>({ resolver: zodResolver(schema) });
+  } = useForm<RegisterData>({ resolver: zodResolver(schema) });
 
+  const handleRegister = (data: RegisterData) => {
+    apiClient
+      .post("/register", data)
+      .then((res) => console.log(res))
+      .catch((err) => console.log(err));
+  };
   return (
     <Box
       display="flex"
@@ -34,7 +41,7 @@ export default function Register() {
       <form
         className="login-form"
         onSubmit={handleSubmit((data) => {
-          console.log(data);
+          handleRegister(data);
           reset();
         })}
       >

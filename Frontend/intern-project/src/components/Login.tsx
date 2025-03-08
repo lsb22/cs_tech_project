@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router";
+import apiClient from "../../Services/api-client";
 
 const schema = z.object({
   // for schema based form validation
@@ -28,6 +29,13 @@ export default function Login() {
     navigate("/register");
   };
 
+  const handleLoginClick = (data: LoginData) => {
+    apiClient
+      .post("/login", data)
+      .then(() => alert("User exists"))
+      .catch((err) => alert(err.response.data.message));
+  };
+
   return (
     <Box
       display="flex"
@@ -39,7 +47,7 @@ export default function Login() {
       <form
         className="login-form"
         onSubmit={handleSubmit((data) => {
-          console.log(data);
+          handleLoginClick(data);
           reset();
         })}
       >
