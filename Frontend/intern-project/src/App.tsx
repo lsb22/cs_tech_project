@@ -1,18 +1,7 @@
-import { Box, Text } from "@chakra-ui/react";
+import Login from "./components/Login";
 
 const App = () => {
-  return (
-    <Box>
-      <Text
-        textStyle="2xl"
-        color="green"
-        borderColor="purple"
-        border="1px solid"
-      >
-        hi
-      </Text>
-    </Box>
-  );
+  return <Login />;
 };
 
 export default App;
