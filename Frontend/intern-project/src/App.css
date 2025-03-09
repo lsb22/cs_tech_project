@@ -1,6 +1,8 @@
 body {
   margin: 0;
   padding: 0;
+  background-color: black;
+  color: white;
 }
 
 .login-form {
@@ -8,4 +10,8 @@ body {
   border: 1px solid white;
   border-radius: 10px;
   padding: 50px;
+}
+
+::-webkit-scrollbar {
+  display: none;
 }

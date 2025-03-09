@@ -32,7 +32,10 @@ export default function Login() {
   const handleLoginClick = (data: LoginData) => {
     apiClient
       .post("/login", data)
-      .then(() => navigate("/dashboard"))
+      .then((res) => {
+        localStorage.setItem("token", res.data.token);
+        navigate("/dashboard");
+      })
       .catch((err) => alert(err.response.data.message));
   };
 

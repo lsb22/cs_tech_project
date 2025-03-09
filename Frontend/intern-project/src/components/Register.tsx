@@ -30,7 +30,7 @@ export default function Register() {
   const handleRegister = (data: RegisterData) => {
     apiClient
       .post("/register", data)
-      .then(() => navigate("/dashboard"))
+      .then(() => navigate("/"))
       .catch((err) => alert(err.response.data.message));
   };
   return (
