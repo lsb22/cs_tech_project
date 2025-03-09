@@ -159,11 +159,6 @@ app.post("/file", verifyToken, upload.single("file"), async (req, res) => {
     const uploadedTasks = await taskModel.insertMany(parsedData);
 
     res.status(200).send({ tasks: uploadedTasks });
-  } else if (fileExt === ".xlsx" || fileExt === ".xls") {
-    // Parse Excel
-    parsedData = parseExcel(fileName);
-  } else {
-    return res.status(400).json({ message: "Unsupported file type" });
   }
 });
 
