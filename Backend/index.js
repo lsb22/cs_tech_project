@@ -4,12 +4,34 @@ import mongoose from "mongoose";
 import connectionString from "./password.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import multer from "multer";
+import csv from "csv-parser";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 const PORT = 3000;
 const secretKey = "hsdbenka22102002";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    const originalName = path.parse(file.originalname).name; // Extract base name
+    const extension = path.extname(file.originalname); // Extract extension
+    cb(null, originalName + extension);
+  },
+});
+
+const upload = multer({
+  storage,
+});
 
 // connecting to mongoDb
 mongoose
@@ -33,7 +55,6 @@ const agentSchema = new mongoose.Schema({
 
 const userModel = mongoose.model("user", userSchema); // mongoose model
 const agentModel = mongoose.model("agent", agentSchema); // mongoose model
-
 function verifyToken(req, res, next) {
   const token = req.header("Authorization");
   if (!token) res.status(403).json({ error: "Access denied" });
@@ -94,13 +115,13 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/agent", verifyToken, async (req, res) => {
-  const { name, email, password, mobile } = req.body;
+  const { username, email, password, mobile } = req.body;
   const hash = bcrypt.hashSync(password, 10); // hashing password
 
   const newAgent = new agentModel({
     email,
     password: hash,
-    username: name,
+    username,
     mobile,
   });
   try {
@@ -117,5 +138,41 @@ app.get("/agent", verifyToken, async (req, res) => {
   const agents = await agentModel.find();
   res.status(200).send({ agents: agents });
 });
+
+app.post("/file", verifyToken, upload.single("file"), async (req, res) => {
+  const fileExt = path.extname(req.file.originalname).toLowerCase();
+  const fileName = req.file.originalname;
+  let parsedData;
+
+  if (fileExt === ".csv") {
+    // Parse CSV
+    parsedData = await parseCSV(fileName);
+    res.status(200).send({ tasks: parsedData });
+  } else if (fileExt === ".xlsx" || fileExt === ".xls") {
+    // Parse Excel
+    parsedData = parseExcel(fileName);
+  } else {
+    return res.status(400).json({ message: "Unsupported file type" });
+  }
+});
+
+function parseCSV(fileName) {
+  return new Promise((resolve, reject) => {
+    const results = [];
+    const p = __dirname + "\\uploads\\" + fileName;
+
+    fs.createReadStream(p)
+      .pipe(csv())
+      .on("data", (data) => {
+        results.push(data);
+      })
+      .on("end", () => {
+        resolve(results);
+      })
+      .on("error", (error) => {
+        reject(error);
+      });
+  });
+}
 
 app.listen(PORT, () => console.log(`server is running on port: ${PORT}`));

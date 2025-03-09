@@ -31,7 +31,7 @@ const schema = z.object({
   password: z
     .string()
     .min(8, { message: "password can't be lesser than 8 characters." }),
-  name: z.string().min(4, { message: "Enter valid user name" }),
+  username: z.string().min(4, { message: "Enter valid user name" }),
   mobile: z
     .string()
     .min(12, { message: "Enter mobile number with country code" })
@@ -47,24 +47,66 @@ interface AgentData extends AgentFormData {
   _id?: string;
 }
 
+interface Tasks {
+  FirstName: string;
+  Phone: string;
+  Notes: string;
+}
+
 const Dashboard = () => {
-  const [agents, setAgents] = useState<AgentData[]>([]);
-  useEffect(() => {
-    apiClient
-      .get("/agent", {
-        headers: {
-          Authorization: localStorage.getItem("token"),
-        },
-      })
-      .then((res) => setAgents(res.data.agents))
-      .catch((err) => alert(err.response.data.message));
-  }, []);
   const {
     register,
     reset,
     formState: { errors },
     handleSubmit,
   } = useForm<AgentFormData>({ resolver: zodResolver(schema) });
+  const [agents, setAgents] = useState<AgentData[]>([]);
+  const [file, setFile] = useState<File>();
+  const [tasks, setTasks] = useState<Tasks[]>([]);
+  const map = new Map();
+
+  if (tasks) {
+    let idx = 0;
+    for (let i = 0; i < tasks.length; i++) {
+      let arr = map.get(agents[idx]);
+      map.set(agents[idx].username, arr ? arr.push(tasks[i]) : [tasks[i]]);
+      idx = (idx + 1) % agents.length;
+    }
+    console.log(tasks);
+    console.log(map);
+  }
+
+  const handleMessageSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (file) {
+      const formData = new FormData();
+
+      formData.append("file", file);
+
+      formData.append("fileName", file.name);
+      formData.append("fileType", file.type);
+
+      apiClient
+        .post("/file", formData, {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        })
+        .then((res) => {
+          setTasks((prevTasks) => [...prevTasks, ...res.data.tasks]);
+        })
+        .catch((err) => alert(err.response.data.message));
+
+      setFile(undefined);
+    }
+  };
+
+  const selectFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setFile(event.target.files[0]);
+    }
+  };
 
   const handleCreateAgent = (data: AgentFormData) => {
     const org = [...agents];
@@ -83,9 +125,19 @@ const Dashboard = () => {
       });
   };
 
+  useEffect(() => {
+    apiClient
+      .get("/agent", {
+        headers: {
+          Authorization: localStorage.getItem("token"),
+        },
+      })
+      .then((res) => setAgents(res.data.agents))
+      .catch((err) => alert(err.response.data.message));
+  }, []);
   return (
     <Grid templateAreas={`"sidepanel main"`} height="100vh" width="100vw">
-      <GridItem area="sidepanel" height="100%" overflowY="scroll" width="350px">
+      <GridItem area="sidepanel" overflowY="scroll" width="350px">
         <Stack
           width="95%"
           gap={5}
@@ -103,7 +155,7 @@ const Dashboard = () => {
           <DialogRoot
             placement="center"
             motionPreset="slide-in-bottom"
-            closeOnInteractOutside={false}
+            closeOnInteractOutside={true}
             size={{ lg: "md", sm: "xs" }}
           >
             <DialogTrigger asChild>
@@ -131,9 +183,9 @@ const Dashboard = () => {
                     </Stack>
                     <Fieldset.Content>
                       <Field label="Name">
-                        <Input type="text" {...register("name")} />
-                        {errors.name && (
-                          <Text color="red.400">{errors.name.message}</Text>
+                        <Input type="text" {...register("username")} />
+                        {errors.username && (
+                          <Text color="red.400">{errors.username.message}</Text>
                         )}
                       </Field>
                       <Field label="Email Address">
@@ -170,20 +222,27 @@ const Dashboard = () => {
             </DialogContent>
           </DialogRoot>
 
-          <Input
-            size="md"
-            type="file"
-            unstyled
-            border="1px solid white"
-            borderRadius={4}
-          />
+          <form onSubmit={handleMessageSubmit}>
+            <Input
+              size="md"
+              type="file"
+              onChange={selectFile}
+              unstyled
+              border="1px solid white"
+              borderRadius={4}
+              accept=".csv,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            />
+            <Button type="submit" mt={2}>
+              Upload file (csv/xlsx/axls)
+            </Button>
+          </form>
         </Stack>
       </GridItem>
       <GridItem
         area="main"
         height="100%"
-        borderLeft="1px solid gray"
-        borderRadius={50}
+        borderLeft="3px solid gray"
+        borderRadius={5}
         width="700px"
         overflowY="scroll"
       >
@@ -198,17 +257,21 @@ const Dashboard = () => {
             Agents will be visible here
           </Stack>
         )}
-        <SimpleGrid columns={{ sm: 2 }} p={10}>
+        <SimpleGrid columns={{ sm: 2 }} p={10} gap={5}>
           {agents.map((agent, index) => (
             <Card.Root key={index} width="300px" borderLeft="2px solid white">
               <Card.Header fontSize="1.6rem">
-                Agent: <b>{agent.name}</b>
+                Agent: <b>{agent.username}</b>
               </Card.Header>
               <Card.Body>
                 <Stack fontSize="1.2rem">
                   <Text>Mobile: {agent.mobile}</Text>
                   <Text>Email: {agent.email}</Text>
                   <Text>Tasks</Text>
+                  {map &&
+                    map
+                      .get(agent.username)
+                      ?.map((task: Tasks) => <Text>{task.Notes}</Text>)}
                 </Stack>
               </Card.Body>
             </Card.Root>
