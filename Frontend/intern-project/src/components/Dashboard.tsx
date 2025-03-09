@@ -20,7 +20,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import apiClient from "../../Services/api-client";
@@ -51,6 +51,7 @@ interface Tasks {
   FirstName: string;
   Phone: string;
   Notes: string;
+  _id?: string;
 }
 
 const Dashboard = () => {
@@ -63,18 +64,33 @@ const Dashboard = () => {
   const [agents, setAgents] = useState<AgentData[]>([]);
   const [file, setFile] = useState<File>();
   const [tasks, setTasks] = useState<Tasks[]>([]);
-  const map = new Map();
 
-  if (tasks) {
-    let idx = 0;
-    for (let i = 0; i < tasks.length; i++) {
-      let arr = map.get(agents[idx]);
-      map.set(agents[idx].username, arr ? arr.push(tasks[i]) : [tasks[i]]);
-      idx = (idx + 1) % agents.length;
+  // const map = new Map();
+
+  // if (tasks.length !== 0 && agents.length !== 0) {
+  //   let idx = 0;
+  //   for (let i = 0; i < tasks.length; i++) {
+  //     let arr = map.get(agents[idx]);
+  //     map.set(agents[idx].username, arr ? arr.push(tasks[i]) : [tasks[i]]);
+  //     idx = (idx + 1) % agents.length;
+  //   }
+  // }
+
+  const taskMap = useMemo(() => {
+    const map = new Map();
+
+    if (tasks.length !== 0 && agents.length !== 0) {
+      let idx = 0;
+      for (let i = 0; i < tasks.length; i++) {
+        const username = agents[idx].username;
+        const existingTasks = map.get(username) || [];
+        map.set(username, [...existingTasks, tasks[i]]);
+        idx = (idx + 1) % agents.length;
+      }
     }
-    console.log(tasks);
-    console.log(map);
-  }
+
+    return map;
+  }, [tasks, agents]);
 
   const handleMessageSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -133,6 +149,17 @@ const Dashboard = () => {
         },
       })
       .then((res) => setAgents(res.data.agents))
+      .catch((err) => alert(err.response.data.message));
+  }, []);
+
+  useEffect(() => {
+    apiClient
+      .get("/tasks", {
+        headers: {
+          Authorization: localStorage.getItem("token"),
+        },
+      })
+      .then((res) => setTasks(res.data.tasks))
       .catch((err) => alert(err.response.data.message));
   }, []);
   return (
@@ -268,10 +295,12 @@ const Dashboard = () => {
                   <Text>Mobile: {agent.mobile}</Text>
                   <Text>Email: {agent.email}</Text>
                   <Text>Tasks</Text>
-                  {map &&
-                    map
+                  {taskMap &&
+                    taskMap
                       .get(agent.username)
-                      ?.map((task: Tasks) => <Text>{task.Notes}</Text>)}
+                      ?.map((task: Tasks, index: number) => (
+                        <Text key={index}>{task.Notes}</Text>
+                      ))}
                 </Stack>
               </Card.Body>
             </Card.Root>

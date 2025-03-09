@@ -53,8 +53,16 @@ const agentSchema = new mongoose.Schema({
   mobile: String,
 });
 
+const taskSchema = new mongoose.Schema({
+  FirstName: String,
+  Phone: String,
+  Notes: String,
+});
+
 const userModel = mongoose.model("user", userSchema); // mongoose model
 const agentModel = mongoose.model("agent", agentSchema); // mongoose model
+const taskModel = mongoose.model("task", taskSchema); // mongoose model
+
 function verifyToken(req, res, next) {
   const token = req.header("Authorization");
   if (!token) res.status(403).json({ error: "Access denied" });
@@ -147,13 +155,22 @@ app.post("/file", verifyToken, upload.single("file"), async (req, res) => {
   if (fileExt === ".csv") {
     // Parse CSV
     parsedData = await parseCSV(fileName);
-    res.status(200).send({ tasks: parsedData });
+
+    const uploadedTasks = await taskModel.insertMany(parsedData);
+
+    res.status(200).send({ tasks: uploadedTasks });
   } else if (fileExt === ".xlsx" || fileExt === ".xls") {
     // Parse Excel
     parsedData = parseExcel(fileName);
   } else {
     return res.status(400).json({ message: "Unsupported file type" });
   }
+});
+
+app.get("/tasks", verifyToken, async (req, res) => {
+  const tasks = await taskModel.find();
+  if (tasks) res.status(200).send({ tasks: tasks });
+  else res.status(400).send({ message: "no tasks available" });
 });
 
 function parseCSV(fileName) {
