@@ -51,6 +51,7 @@ const agentSchema = new mongoose.Schema({
   email: String,
   password: String,
   mobile: String,
+  creatorEmail: String,
 });
 
 const taskSchema = new mongoose.Schema({
@@ -122,15 +123,19 @@ app.post("/register", async (req, res) => {
   }
 });
 
-app.post("/agent", verifyToken, async (req, res) => {
-  const { username, email, password, mobile } = req.body;
+app.post("/agent/:agentEmail", verifyToken, async (req, res) => {
+  // const { agentEmail } = req.params;
+  // console.log(agentEmail);
+  const { username, email, password, mobile, creatorAgent } = req.body;
   const hash = bcrypt.hashSync(password, 10); // hashing password
+  // console.log(creatorEmail);
 
   const newAgent = new agentModel({
     email,
     password: hash,
     username,
     mobile,
+    creatorEmail: creatorAgent,
   });
   try {
     const agent = await newAgent.save();
@@ -142,8 +147,9 @@ app.post("/agent", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/agent", verifyToken, async (req, res) => {
-  const agents = await agentModel.find();
+app.get("/agent/:agentEmail", verifyToken, async (req, res) => {
+  const { agentEmail } = req.params;
+  const agents = await agentModel.find({ creatorEmail: agentEmail });
   res.status(200).send({ agents: agents });
 });
 
@@ -155,6 +161,7 @@ app.post("/file", verifyToken, upload.single("file"), async (req, res) => {
   if (fileExt === ".csv") {
     // Parse CSV
     parsedData = await parseCSV(fileName);
+    console.log(parsedData);
 
     const uploadedTasks = await taskModel.insertMany(parsedData);
 
@@ -166,6 +173,29 @@ app.get("/tasks", verifyToken, async (req, res) => {
   const tasks = await taskModel.find();
   if (tasks) res.status(200).send({ tasks: tasks });
   else res.status(400).send({ message: "no tasks available" });
+});
+
+app.post("/agentlogin", async (req, res) => {
+  if (!req.body) {
+    return res.status(401).json({ message: "Please enter the details" });
+  }
+
+  const { email, password } = req.body;
+
+  try {
+    const result = await agentModel.find({ email: email });
+    if (result.length === 0)
+      return res.status(401).send({ message: "Agent doesn't exist" });
+    const exist = await bcrypt.compare(password, result[0].password);
+    if (exist) {
+      const token = await jwt.sign({ user: result[0]._id }, secretKey, {
+        expiresIn: "1h",
+      });
+      res.status(200).json({ token });
+    } else res.status(403).send({ message: "Invalid password or email" });
+  } catch (error) {
+    res.status(500).send({ message: "Login failed" });
+  }
 });
 
 function parseCSV(fileName) {

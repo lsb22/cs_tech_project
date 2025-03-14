@@ -20,7 +20,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import apiClient from "../../Services/api-client";
@@ -56,8 +56,9 @@ interface Tasks {
   _id?: string;
 }
 
-const Dashboard = () => {
+const AgentDashboard = () => {
   const navigate = useNavigate();
+
   const {
     register,
     reset,
@@ -68,33 +69,6 @@ const Dashboard = () => {
   const [file, setFile] = useState<File>();
   const [tasks, setTasks] = useState<Tasks[]>([]);
   const { agentEmail } = useParams();
-
-  // const map = new Map();
-
-  // if (tasks.length !== 0 && agents.length !== 0) {
-  //   let idx = 0;
-  //   for (let i = 0; i < tasks.length; i++) {
-  //     let arr = map.get(agents[idx]);
-  //     map.set(agents[idx].username, arr ? arr.push(tasks[i]) : [tasks[i]]);
-  //     idx = (idx + 1) % agents.length;
-  //   }
-  // }
-
-  const taskMap = useMemo(() => {
-    const map = new Map();
-
-    if (tasks.length !== 0 && agents.length !== 0) {
-      let idx = 0;
-      for (let i = 0; i < tasks.length; i++) {
-        const username = agents[idx].username;
-        const existingTasks = map.get(username) || [];
-        map.set(username, [...existingTasks, tasks[i]]);
-        idx = (idx + 1) % agents.length;
-      }
-    }
-
-    return map;
-  }, [tasks, agents]);
 
   const handleMessageSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -114,7 +88,6 @@ const Dashboard = () => {
           },
         })
         .then((res) => {
-          console.log(res);
           setTasks((prevTasks) => [...prevTasks, ...res.data.tasks]);
         })
         .catch((err) => alert(err.response.data.message));
@@ -146,11 +119,6 @@ const Dashboard = () => {
       });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/");
-  };
-
   useEffect(() => {
     apiClient
       .get("/agent/" + agentEmail, {
@@ -162,16 +130,11 @@ const Dashboard = () => {
       .catch((err) => alert(err.response.data.message));
   }, []);
 
-  useEffect(() => {
-    apiClient
-      .get("/tasks", {
-        headers: {
-          Authorization: localStorage.getItem("token"),
-        },
-      })
-      .then((res) => setTasks(res.data.tasks))
-      .catch((err) => alert(err.response.data.message));
-  }, []);
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/");
+  };
+
   return (
     <Grid templateAreas={`"sidepanel main"`} height="100vh" width="100vw">
       <GridItem area="sidepanel" overflowY="scroll" width="350px">
@@ -314,12 +277,6 @@ const Dashboard = () => {
                   <Text>Mobile: {agent.mobile}</Text>
                   <Text>Email: {agent.email}</Text>
                   <Text>Tasks</Text>
-                  {taskMap &&
-                    taskMap
-                      .get(agent.username)
-                      ?.map((task: Tasks, index: number) => (
-                        <Text key={index}>{task.Notes}</Text>
-                      ))}
                 </Stack>
               </Card.Body>
             </Card.Root>
@@ -330,4 +287,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default AgentDashboard;

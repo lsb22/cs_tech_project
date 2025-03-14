@@ -16,7 +16,7 @@ const schema = z.object({
 
 type LoginData = z.infer<typeof schema>;
 
-export default function Login() {
+export default function AgentLogin() {
   const navigate = useNavigate();
   const {
     register,
@@ -25,22 +25,14 @@ export default function Login() {
     formState: { errors },
   } = useForm<LoginData>({ resolver: zodResolver(schema) });
 
-  const handleRegisterClick = () => {
-    navigate("/register");
-  };
-
   const handleLoginClick = (data: LoginData) => {
     apiClient
-      .post("/login", data)
+      .post("/agentlogin", data)
       .then((res) => {
         localStorage.setItem("token", res.data.token);
-        navigate("/dashboard/" + data.email);
+        navigate("/Agentdashboard/" + data.email);
       })
       .catch((err) => alert(err.response.data.message));
-  };
-
-  const handleAgentLogin = () => {
-    navigate("/agentLogin");
   };
 
   return (
@@ -60,7 +52,7 @@ export default function Login() {
       >
         <Fieldset.Root>
           <Stack>
-            <Fieldset.Legend fontSize="2xl">Admin Login</Fieldset.Legend>
+            <Fieldset.Legend fontSize="2xl">Agent Login</Fieldset.Legend>
             <Fieldset.HelperText>
               Please enter your details below.
             </Fieldset.HelperText>
@@ -81,8 +73,6 @@ export default function Login() {
           </Fieldset.Content>
           <Stack direction="row">
             <Button type="submit">Submit</Button>
-            <Button onClick={handleRegisterClick}>Register</Button>
-            <Button onClick={handleAgentLogin}>Agent Login</Button>
           </Stack>
         </Fieldset.Root>
       </form>
