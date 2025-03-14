@@ -1,14 +1,14 @@
-import express from "express";
-import cors from "cors";
-import mongoose from "mongoose";
-import connectionString from "./password.js";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import multer from "multer";
+import cors from "cors";
 import csv from "csv-parser";
-import path from "path";
+import express from "express";
 import fs from "fs";
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+import multer from "multer";
+import path from "path";
 import { fileURLToPath } from "url";
+import connectionString from "./password.js";
 
 const app = express();
 app.use(cors());
@@ -39,6 +39,8 @@ mongoose
   .then(() => console.log("connected to database"))
   .catch((err) => console.log(err));
 
+// const connection = mongoose.connection;
+
 // mongoose schema
 const userSchema = new mongoose.Schema({
   username: String,
@@ -58,11 +60,27 @@ const taskSchema = new mongoose.Schema({
   FirstName: String,
   Phone: String,
   Notes: String,
+  assignedTo: String,
+  createdBy: String,
 });
 
 const userModel = mongoose.model("user", userSchema); // mongoose model
 const agentModel = mongoose.model("agent", agentSchema); // mongoose model
 const taskModel = mongoose.model("task", taskSchema); // mongoose model
+
+// async function deleteTasks() {
+//   try {
+//     const res = await taskModel.deleteMany();
+//     console.log("successfully deleted tasks", res);
+//   } catch (error) {
+//     console.log("Error deleting tasks", error);
+//     throw error;
+//   }
+// }
+
+// connection.once("open", () => {
+//   deleteTasks();
+// });
 
 function verifyToken(req, res, next) {
   const token = req.header("Authorization");
@@ -124,11 +142,8 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/agent/:agentEmail", verifyToken, async (req, res) => {
-  // const { agentEmail } = req.params;
-  // console.log(agentEmail);
   const { username, email, password, mobile, creatorAgent } = req.body;
   const hash = bcrypt.hashSync(password, 10); // hashing password
-  // console.log(creatorEmail);
 
   const newAgent = new agentModel({
     email,
@@ -153,26 +168,53 @@ app.get("/agent/:agentEmail", verifyToken, async (req, res) => {
   res.status(200).send({ agents: agents });
 });
 
-app.post("/file", verifyToken, upload.single("file"), async (req, res) => {
-  const fileExt = path.extname(req.file.originalname).toLowerCase();
-  const fileName = req.file.originalname;
-  let parsedData;
+app.post(
+  "/file/:agentEmail",
+  verifyToken,
+  upload.single("file"),
+  async (req, res) => {
+    const { agentEmail } = req.params;
+    const fileExt = path.extname(req.file.originalname).toLowerCase();
+    const fileName = req.file.originalname;
+    let parsedData;
 
-  if (fileExt === ".csv") {
-    // Parse CSV
-    parsedData = await parseCSV(fileName);
-    console.log(parsedData);
+    if (fileExt === ".csv") {
+      // Parse CSV
+      parsedData = await parseCSV(fileName);
 
-    const uploadedTasks = await taskModel.insertMany(parsedData);
+      const s = new Set();
+      const uniqueData = [];
 
-    res.status(200).send({ tasks: uploadedTasks });
+      for (const obj of parsedData) {
+        const key = JSON.stringify(obj);
+        if (!s.has(key)) {
+          s.add(key);
+          uniqueData.push(obj);
+        }
+      }
+
+      const data = uniqueData.map((data) => {
+        return {
+          ...data,
+          createdBy: agentEmail,
+        };
+      });
+
+      res.status(200).send({ tasks: data });
+    }
   }
-});
+);
 
-app.get("/tasks", verifyToken, async (req, res) => {
-  const tasks = await taskModel.find();
+app.get("/tasks/:agentEmail", verifyToken, async (req, res) => {
+  const { agentEmail } = req.params;
+  const tasks = await taskModel.find({ createdBy: agentEmail });
   if (tasks) res.status(200).send({ tasks: tasks });
   else res.status(400).send({ message: "no tasks available" });
+});
+
+app.post("/tasks", verifyToken, async (req, res) => {
+  const tasks = req.body;
+  const uploadedTasks = await taskModel.insertMany(tasks);
 });
 
 app.post("/agentlogin", async (req, res) => {

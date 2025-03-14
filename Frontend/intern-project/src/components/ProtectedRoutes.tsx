@@ -6,7 +6,7 @@ interface Props {
 }
 
 const ProtectedRoutes = ({ children }: Props) => {
-  const [isAuthenticated, setAuthenticated] = useState<Boolean | null>(null);
+  const [isAuthenticated, setAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");

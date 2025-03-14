@@ -20,7 +20,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import apiClient from "../../Services/api-client";
@@ -53,6 +53,8 @@ interface Tasks {
   FirstName: string;
   Phone: string;
   Notes: string;
+  assignedTo?: string;
+  createdBy?: string;
   _id?: string;
 }
 
@@ -70,6 +72,61 @@ const AgentDashboard = () => {
   const [tasks, setTasks] = useState<Tasks[]>([]);
   const { agentEmail } = useParams();
 
+  const sendTasksToBackend = (data: Tasks[]) => {
+    apiClient
+      .post("/tasks", data, {
+        headers: {
+          Authorization: localStorage.getItem("token"),
+        },
+      })
+      .then(() => console.log("Tasks successfully uploaded to database"))
+      .catch((err) => alert(err.response.data.message));
+  };
+
+  const assignTasksToAgents = () => {
+    if (tasks.length === 0 || agents.length === 0) return;
+
+    const newTasks: Tasks[] = [];
+
+    const updatedTasks = tasks.map((task, index) => {
+      if (!task.assignedTo) {
+        const agent = index % agents.length;
+        const t = {
+          ...task,
+          assignedTo: agents[agent].username,
+        };
+        newTasks.push(t);
+        return t;
+      } else return task;
+    });
+    setTasks(updatedTasks);
+    if (newTasks.length !== 0) sendTasksToBackend(newTasks);
+  };
+
+  useEffect(() => {
+    assignTasksToAgents();
+  }, [tasks.length, agents.length]);
+
+  const taskMap = useMemo(() => {
+    const map = new Map();
+
+    if (tasks.length !== 0 && agents.length !== 0) {
+      agents.forEach((agent) => {
+        map.set(agent.username, []);
+      });
+
+      tasks.forEach((task) => {
+        if (task.assignedTo) {
+          const agent = task.assignedTo;
+          const arr = map.get(agent) || [];
+          map.set(agent, [...arr, task]);
+        }
+      });
+    }
+
+    return map;
+  }, [tasks, agents]);
+
   const handleMessageSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -82,7 +139,7 @@ const AgentDashboard = () => {
       formData.append("fileType", file.type);
 
       apiClient
-        .post("/file", formData, {
+        .post("/file/" + agentEmail, formData, {
           headers: {
             Authorization: localStorage.getItem("token"),
           },
@@ -127,6 +184,17 @@ const AgentDashboard = () => {
         },
       })
       .then((res) => setAgents(res.data.agents))
+      .catch((err) => alert(err.response.data.message));
+  }, []);
+
+  useEffect(() => {
+    apiClient
+      .get("/tasks/" + agentEmail, {
+        headers: {
+          Authorization: localStorage.getItem("token"),
+        },
+      })
+      .then((res) => setTasks(res.data.tasks))
       .catch((err) => alert(err.response.data.message));
   }, []);
 
@@ -277,6 +345,12 @@ const AgentDashboard = () => {
                   <Text>Mobile: {agent.mobile}</Text>
                   <Text>Email: {agent.email}</Text>
                   <Text>Tasks</Text>
+                  {taskMap &&
+                    taskMap
+                      .get(agent.username)
+                      ?.map((task: Tasks, index: number) => (
+                        <Text key={index}>{task.Notes}</Text>
+                      ))}
                 </Stack>
               </Card.Body>
             </Card.Root>
