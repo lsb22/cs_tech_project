@@ -2,13 +2,14 @@ import bcrypt from "bcryptjs";
 import cors from "cors";
 import csv from "csv-parser";
 import express from "express";
-import fs from "fs";
+import fs, { readFileSync } from "fs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import connectionString from "./password.js";
+import XLSX from "xlsx";
 
 const app = express();
 app.use(cors());
@@ -181,27 +182,28 @@ app.post(
     if (fileExt === ".csv") {
       // Parse CSV
       parsedData = await parseCSV(fileName);
-
-      const s = new Set();
-      const uniqueData = [];
-
-      for (const obj of parsedData) {
-        const key = JSON.stringify(obj);
-        if (!s.has(key)) {
-          s.add(key);
-          uniqueData.push(obj);
-        }
-      }
-
-      const data = uniqueData.map((data) => {
-        return {
-          ...data,
-          createdBy: agentEmail,
-        };
-      });
-
-      res.status(200).send({ tasks: data });
+    } else if (fileExt === ".xlsx") {
+      parsedData = await parseXSLX(fileName);
     }
+
+    const s = new Set();
+    const uniqueData = [];
+
+    for (const obj of parsedData) {
+      const key = JSON.stringify(obj);
+      if (!s.has(key)) {
+        s.add(key);
+        uniqueData.push(obj);
+      }
+    }
+
+    const data = uniqueData.map((data) => {
+      return {
+        ...data,
+        createdBy: agentEmail,
+      };
+    });
+    res.status(200).send({ tasks: data });
   }
 );
 
@@ -256,6 +258,17 @@ function parseCSV(fileName) {
       .on("error", (error) => {
         reject(error);
       });
+  });
+}
+
+function parseXSLX(filename) {
+  return new Promise((resolve, reject) => {
+    const p = __dirname + "\\uploads\\" + filename;
+    var workbook = XLSX.readFile(p);
+    var sheet_name_list = workbook.SheetNames;
+    var xlData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet_name_list[0]]);
+    if (xlData.length !== 0) resolve(xlData);
+    else reject("something went wrong");
   });
 }
 
