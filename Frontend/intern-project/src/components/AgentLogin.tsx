@@ -29,7 +29,9 @@ export default function AgentLogin() {
     apiClient
       .post("/agentlogin", data)
       .then((res) => {
+        console.log(res.data);
         localStorage.setItem("token", res.data.token);
+        localStorage.setItem("username", res.data.username);
         navigate("/Agentdashboard/" + data.email);
       })
       .catch((err) => alert(err.response.data.message));

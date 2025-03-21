@@ -214,6 +214,13 @@ app.get("/tasks/:agentEmail", verifyToken, async (req, res) => {
   else res.status(400).send({ message: "no tasks available" });
 });
 
+app.get("/tasks/self/:username", verifyToken, async (req, res) => {
+  const { username } = req.params;
+  const tasks = await taskModel.find({ assignedTo: username });
+  if (tasks) res.status(200).send({ tasks: tasks });
+  else res.status(400).send({ message: "no tasks available" });
+});
+
 app.post("/tasks", verifyToken, async (req, res) => {
   const tasks = req.body;
   const uploadedTasks = await taskModel.insertMany(tasks);
@@ -232,12 +239,14 @@ app.post("/agentlogin", async (req, res) => {
       return res.status(401).send({ message: "Agent doesn't exist" });
     const exist = await bcrypt.compare(password, result[0].password);
     if (exist) {
+      const username = result[0].username;
       const token = await jwt.sign({ user: result[0]._id }, secretKey, {
         expiresIn: "1h",
       });
-      res.status(200).json({ token });
+      res.status(200).json({ token, username });
     } else res.status(403).send({ message: "Invalid password or email" });
   } catch (error) {
+    console.log(error);
     res.status(500).send({ message: "Login failed" });
   }
 });

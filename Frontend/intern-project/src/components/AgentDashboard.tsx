@@ -70,6 +70,7 @@ const AgentDashboard = () => {
   const [agents, setAgents] = useState<AgentData[]>([]);
   const [file, setFile] = useState<File>();
   const [tasks, setTasks] = useState<Tasks[]>([]);
+  const [agentTasks, setAgentTasks] = useState<Tasks[]>();
   const { agentEmail } = useParams();
 
   const sendTasksToBackend = (data: Tasks[]) => {
@@ -198,8 +199,21 @@ const AgentDashboard = () => {
       .catch((err) => alert(err.response.data.message));
   }, []);
 
+  useEffect(() => {
+    const username = localStorage.getItem("username");
+    apiClient
+      .get("/tasks/self/" + username, {
+        headers: {
+          Authorization: localStorage.getItem("token"),
+        },
+      })
+      .then((res) => setAgentTasks(res.data.tasks))
+      .catch((err) => alert(err.response.data.message));
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("username");
     navigate("/");
   };
 
@@ -314,6 +328,15 @@ const AgentDashboard = () => {
           </form>
           <Button onClick={handleLogout}>Logout</Button>
         </Stack>
+        <Card.Root width="300px" borderLeft="2px solid white" ml={2}>
+          <Card.Header fontSize="1.6rem">Your Tasks</Card.Header>
+          <Card.Body>
+            {agentTasks?.length === 0 && <h1>You don't have any tasks</h1>}
+            {agentTasks?.map((task: Tasks, index: number) => (
+              <Text key={index}>{task.Notes}</Text>
+            ))}
+          </Card.Body>
+        </Card.Root>
       </GridItem>
       <GridItem
         area="main"
